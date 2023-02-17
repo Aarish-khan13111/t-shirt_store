@@ -163,3 +163,135 @@ exports.passwordReset = BigPromise(async (req, res, next) => {
 
   cookieToken(user, res);
 });
+
+exports.userDashboard = BigPromise(async (req, res, next) => {
+  //grabbing user id
+  const user = await User.findById(req.user.id);
+
+  //sending a user detail as response
+  res.status(200).json({
+    success: true,
+    user,
+  });
+});
+
+exports.changePassword = BigPromise(async (req, res, next) => {
+  //getting user id
+  const userId = req.user.id;
+
+  //select the password field from user
+  const user = await User.findById(userId).select("+password");
+
+  //checking the old password is correct or not
+  const isOldPasswordCorrect = await user.isValidatedPassword(
+    req.body.oldPassword
+  );
+
+  if (!isOldPasswordCorrect) {
+    return next(new CustomError("Old password is incorrect", 400));
+  }
+
+  //sending a new password
+  user.password = req.body.password;
+
+  //seving the user
+  await user.save();
+
+  cookieToken(user, res);
+});
+
+exports.updateUserDetails = BigPromise(async (req, res, next) => {
+  //gettig a updeted data from user
+  const newData = {
+    name: req.body.name,
+    email: req.body.email,
+  };
+
+  //checking files
+  if (req.files) {
+    const user = await User.findById(req.user.id);
+
+    const imageid = user.photo.id;
+
+    //deleting photo to cloudinary
+    const resp = await cloudinary.uploader.destroy(imageid);
+
+    //updating poto to cloudinary
+    const result = await cloudinary.uploader.upload(
+      req.files.photo.tempFilePath,
+      {
+        folder: "users",
+        width: 150,
+        crop: "scale",
+      }
+    );
+
+    newData.photo = {
+      id: result.public_id,
+      secure_url: result.secure_url,
+    };
+  }
+
+  //updating the user new data
+  const user = await User.findByIdAndUpdate(req.user.id, newData, {
+    new: true,
+    runValidators: true,
+    useFindAndModified: false,
+  });
+  res.status(200).json({
+    success: true,
+  });
+});
+
+exports.adminAllUser = BigPromise(async (req, res, next) => {
+  //getting all the users from DB
+  const users = await User.find();
+
+  res.status(200).json({
+    success: true,
+    users,
+  });
+});
+
+exports.adminGetOneUser = BigPromise(async (req, res, next) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(new CustomError("No user found", 400));
+  }
+
+  res.status(200).json({
+    success: true,
+    user,
+  });
+});
+
+exports.AdminUpdateOneUserDetails = BigPromise(async (req, res, next) => {
+  //gettig a updeted data from user
+  const newData = {
+    name: req.body.name,
+    email: req.body.email,
+    role: req.body.role,
+  };
+
+  //updating the user new data
+  const user = await User.findByIdAndUpdate(req.params.id, newData, {
+    new: true,
+    runValidators: true,
+    useFindAndModified: false,
+  });
+  res.status(200).json({
+    success: true,
+    user,
+  });
+});
+
+exports.managerAllUser = BigPromise(async (req, res, next) => {
+  //getting only users
+  const users = await User.find({ role: "user" });
+
+  res.status(200).json({
+    success: true,
+    users,
+  });
+});
