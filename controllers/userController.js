@@ -101,6 +101,7 @@ exports.forgotpassword = BigPromise(async (req, res, next) => {
   const myUrl = `${req.protocol}://${req.get(
     "host"
   )}/api/v1/password/reset/${forgotToken}`;
+
   //craft a message
   const message = `Copy paste link in your URL and hit enter \n\n ${myUrl}`;
 
@@ -266,7 +267,7 @@ exports.adminGetOneUser = BigPromise(async (req, res, next) => {
   });
 });
 
-exports.AdminUpdateOneUserDetails = BigPromise(async (req, res, next) => {
+exports.adminUpdateOneUserDetails = BigPromise(async (req, res, next) => {
   //gettig a updeted data from user
   const newData = {
     name: req.body.name,
@@ -283,6 +284,24 @@ exports.AdminUpdateOneUserDetails = BigPromise(async (req, res, next) => {
   res.status(200).json({
     success: true,
     user,
+  });
+});
+
+exports.adminDeleteOneUser = BigPromise(async (req, res, next) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(new CustomError("No Such User Found", 401));
+  }
+
+  const imageid = user.photo.id;
+
+  await cloudinary.uploader.destroy(imageid);
+
+  await user.remove();
+
+  res.status(200).json({
+    success: true,
   });
 });
 
