@@ -4,11 +4,10 @@ const CustomError = require("../utils/customError");
 const WhereClause = require("../utils/whereClause");
 const cloudinary = require("cloudinary").v2;
 
-// const CustomError = require("../utils/customError");
-
 exports.addProduct = BigPromise(async (req, res, next) => {
-  //images
-  let imagesArray = [];
+  // images
+
+  let imageArray = [];
 
   if (!req.files) {
     return next(new CustomError("images are required", 401));
@@ -22,14 +21,15 @@ exports.addProduct = BigPromise(async (req, res, next) => {
           folder: "products",
         }
       );
-      imagesArray.push({
+
+      imageArray.push({
         id: result.public_id,
         secure_url: result.secure_url,
       });
     }
   }
 
-  req.body.photos = imagesArray;
+  req.body.photos = imageArray;
   req.body.user = req.user.id;
 
   const product = await Product.create(req.body);
@@ -44,17 +44,46 @@ exports.getAllProduct = BigPromise(async (req, res, next) => {
   const resulPerPage = 6;
   const totalcountProduct = await Product.countDocuments();
 
-  const products = new WhereClause(Product.find(), req.query).search().filter();
+  const productsObj = new WhereClause(Product.find(), req.query)
+    .search()
+    .filter();
 
+  let products = await productsObj.base;
   const filterProductNumber = products.length;
 
-  products.pager(resulPerPage);
-  products = await products.base;
+  productsObj.pager(resulPerPage);
+  products = await productsObj.base.clone();
 
   res.status(200).json({
     success: true,
     products,
     filterProductNumber,
     totalcountProduct,
+  });
+});
+
+exports.getOneProduct = BigPromise(async (req, res, next) => {
+  const product = await Product.findById(req.params.id);
+
+  if (!product) {
+    return next(new CustomError("no Product with this id", 400));
+  }
+
+  res.status(200).json({
+    success: true,
+    product,
+  });
+});
+
+exports.adminGetAllProducts = BigPromise(async (req, res, next) => {
+  const products = await Product.find();
+
+  if (!products) {
+    return next(new CustomError("there are no Products", 400));
+  }
+
+  res.status(200).json({
+    success: true,
+    products,
   });
 });
