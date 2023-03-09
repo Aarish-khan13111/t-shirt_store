@@ -36,6 +36,10 @@ const productSchema = new mongoose.Schema({
       message: "Please select only from category",
     },
   },
+  stoke: {
+    type: Number,
+    required: [true, "please add stoke quantity"],
+  },
   brand: {
     type: String,
     required: [true, "Please add a brand for cloathing"],
